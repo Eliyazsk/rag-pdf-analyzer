@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG PDF Analyzer</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Decorative background glow elements -->
+    <div class="bg-glow-1"></div>
+    <div class="bg-glow-2"></div>
+
+    <div class="app-container">
+        <!-- LEFT PANEL: Source Management -->
+        <aside class="sources-panel">
+            <div class="panel-header">
+                <div class="logo">🧬</div>
+                <h2>RAG PDF Analyzer</h2>
+            </div>
+            
+            <!-- API Key config override -->
+            <div class="api-settings">
+                <input type="password" id="apiKey" placeholder="Using env key by default..." value="">
+            </div>
+
+            <!-- Ingestion area -->
+            <div class="source-uploader">
+                <div class="file-drop-area" id="dropArea">
+                    <span class="upload-icon">➕</span>
+                    <p>Add source PDFs</p>
+                    <input type="file" id="fileInput" multiple accept=".pdf" style="display: none;">
+                </div>
+            </div>
+
+            <!-- List of loaded PDF sources -->
+            <div class="sources-list-container">
+                <div class="sources-list-header">
+                    <span class="section-title">Active Sources</span>
+                    <span id="sourcesCount" class="sources-count-badge">0 Active</span>
+                </div>
+                <div id="sourcesList" class="sources-list">
+                    <div class="empty-sources-state">No sources added yet. Upload PDFs above!</div>
+                </div>
+            </div>
+
+            <!-- Study actions -->
+            <div class="study-actions">
+                <div class="section-title">Notebook Guide</div>
+                <button id="briefingBtn" class="btn btn-secondary btn-block">
+                    <span>📝 Generate Study Guide</span>
+                </button>
+            </div>
+
+            <!-- Ingestion status -->
+            <div class="status-indicator ready" id="statusIndicator">
+                <span class="dot"></span> <span id="statusText">System Ready</span>
+            </div>
+        </aside>
+
+        <!-- RIGHT PANEL: Main Workspace -->
+        <main class="workspace-panel">
+            <!-- Tabs Bar -->
+            <header class="workspace-header">
+                <div class="workspace-tabs">
+                    <button class="tab-link active" data-tab="chat">Chat Workspace</button>
+                    <button class="tab-link" data-tab="guide">Notebook Guide</button>
+                </div>
+            </header>
+
+            <!-- TAB CONTENTS -->
+            <div class="workspace-content">
+                
+                <!-- Chat Workspace Tab -->
+                <div id="chatTab" class="tab-content active">
+                    <div class="messages-container" id="messagesContainer">
+                        <div class="message assistant">
+                            <div class="message-avatar">🤖</div>
+                            <div class="message-content">
+                                Welcome to RAG PDF Analyzer! Upload some PDF sources in the left panel to begin. You can toggle specific sources on/off, and ask questions.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Suggested Questions Quick Chips -->
+                    <div class="suggestions-container" id="suggestionsContainer">
+                        <span class="suggestion-chip-btn" data-query="Explain the main concept of the active documents.">💡 Concept Summary</span>
+                        <span class="suggestion-chip-btn" data-query="What are the key terms and their definitions in these sources?">🔑 Define Key Terms</span>
+                        <span class="suggestion-chip-btn" data-query="Summarize the critical takeaways or lessons learned.">📌 Critical Takeaways</span>
+                    </div>
+
+                    <!-- Chat input -->
+                    <div class="chat-input-container">
+                        <form id="chatForm" class="chat-form">
+                            <input type="text" id="userInput" placeholder="Ask a question about active sources..." autocomplete="off" required>
+                            <button type="submit" id="sendBtn" class="btn btn-send">
+                                <span>Send</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Notebook Guide Tab -->
+                <div id="guideTab" class="tab-content">
+                    <div class="guide-container" id="guideContainer">
+                        <div class="empty-guide-state">
+                            <h3>No Study Guide Generated Yet</h3>
+                            <p>Select your active sources in the left panel and click <strong>"Generate Study Guide"</strong> to create a comprehensive brief of your documents.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Source summary modal -->
+    <div class="modal" id="summaryModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeModal">&times;</span>
+            <h2 id="modalTitle">Source Summary</h2>
+            <div class="modal-body" id="modalBody">
+                <div class="typing-indicator"><span></span><span></span><span></span></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
