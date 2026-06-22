@@ -1,0 +1,8 @@
+Flask
+pypdf
+langchain
+langchain-community
+langchain-nvidia-ai-endpoints
+python-dotenv
+gunicorn
+numpy<2
