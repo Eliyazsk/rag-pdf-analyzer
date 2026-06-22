@@ -5,7 +5,74 @@ from flask import Flask, render_template, request, jsonify
 from pypdf import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings, ChatNVIDIA
-from langchain_community.vectorstores import FAISS
+try:
+    from langchain_community.vectorstores import FAISS
+except Exception as e:
+    print(f"FAISS import failed: {e}. Using MockFAISS fallback.")
+    class FAISS:
+        def __init__(self, embedding_function, index=None):
+            self.embedding_function = embedding_function
+            self.index = index or []
+
+        @classmethod
+        def from_texts(cls, texts, embedding, metadatas=None, **kwargs):
+            instance = cls(embedding)
+            instance.add_texts(texts, metadatas)
+            return instance
+
+        def add_texts(self, texts, metadatas=None, **kwargs):
+            embeddings = self.embedding_function.embed_documents(texts)
+            for i, text in enumerate(texts):
+                metadata = metadatas[i] if metadatas else {}
+                self.index.append({
+                    "text": text,
+                    "metadata": metadata,
+                    "embedding": embeddings[i]
+                })
+
+        def save_local(self, folder_path, **kwargs):
+            import pickle
+            os.makedirs(folder_path, exist_ok=True)
+            data_path = os.path.join(folder_path, "index.pkl")
+            with open(data_path, "wb") as f:
+                pickle.dump(self.index, f)
+
+        @classmethod
+        def load_local(cls, folder_path, embeddings, allow_dangerous_deserialization=False, **kwargs):
+            import pickle
+            instance = cls(embeddings)
+            data_path = os.path.join(folder_path, "index.pkl")
+            if os.path.exists(data_path):
+                with open(data_path, "rb") as f:
+                    instance.index = pickle.load(f)
+            else:
+                raise FileNotFoundError(f"No index file found at {data_path}")
+            return instance
+
+        def similarity_search(self, query, k=4, **kwargs):
+            import math
+            query_embedding = self.embedding_function.embed_query(query)
+            
+            results = []
+            for item in self.index:
+                emb = item["embedding"]
+                dot_product = sum(a * b for a, b in zip(query_embedding, emb))
+                norm_a = math.sqrt(sum(a * a for a in query_embedding))
+                norm_b = math.sqrt(sum(b * b for b in emb))
+                similarity = dot_product / (norm_a * norm_b) if norm_a and norm_b else 0
+                results.append((similarity, item))
+                
+            results.sort(key=lambda x: x[0], reverse=True)
+            
+            from langchain_core.documents import Document
+            docs = []
+            for sim, item in results[:k]:
+                docs.append(Document(
+                    page_content=item["text"],
+                    metadata=item["metadata"]
+                ))
+            return docs
+
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
@@ -17,9 +84,15 @@ app = Flask(__name__)
 
 # Directory setup
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-FAISS_INDEX_PATH = os.path.join(BASE_DIR, 'faiss_index')
-SOURCES_JSON_PATH = os.path.join(BASE_DIR, 'sources.json')
+if os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'):
+    # Vercel has read-only file system, only /tmp is writable
+    UPLOAD_FOLDER = '/tmp/uploads'
+    FAISS_INDEX_PATH = '/tmp/faiss_index'
+    SOURCES_JSON_PATH = '/tmp/sources.json'
+else:
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+    FAISS_INDEX_PATH = os.path.join(BASE_DIR, 'faiss_index')
+    SOURCES_JSON_PATH = os.path.join(BASE_DIR, 'sources.json')
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
